@@ -1265,77 +1265,82 @@ static irqreturn_t tok_interrupt(int irq, void *dev_id)
 		DPRINTK("SRB resp: cmd=%02X rsp=%02X\n",
 				readb(ti->srb), readb(ti->srb + RETCODE_OFST));
 #endif
-		switch (readb(ti->srb)) {	/* SRB command check */
-		case XMIT_DIR_FRAME:{
-			unsigned char xmit_ret_code;
-			xmit_ret_code = readb(ti->srb + RETCODE_OFST);
-			if (xmit_ret_code == 0xff) break;
-			DPRINTK("error on xmit_dir_frame request: %02X\n",
-								xmit_ret_code);
-			if (ti->current_skb) {
-				dev_kfree_skb_irq(ti->current_skb);
-				ti->current_skb = NULL;
-			}
-			/*dev->tbusy = 0;*/
-			netif_wake_queue(dev);
-			if (ti->readlog_pending)
-				ibmtr_readlog(dev);
-			break;
-		}
-		case XMIT_UI_FRAME:{
-			unsigned char xmit_ret_code;
-
-			xmit_ret_code = readb(ti->srb + RETCODE_OFST);
-			if (xmit_ret_code == 0xff) break;
-			DPRINTK("error on xmit_ui_frame request: %02X\n",
-								xmit_ret_code);
-			if (ti->current_skb) {
-				dev_kfree_skb_irq(ti->current_skb);
-				ti->current_skb = NULL;
-			}
-			netif_wake_queue(dev);
-			if (ti->readlog_pending)
-				ibmtr_readlog(dev);
-			break;
-		}
-		case DIR_OPEN_ADAPTER:
-			dir_open_adapter(dev);
-			break;
-		case DLC_OPEN_SAP:
-			if (readb(ti->srb + RETCODE_OFST)) {
-				DPRINTK("open_sap failed: ret_code = %02X, "
-					"retrying\n",
-					(int) readb(ti->srb + RETCODE_OFST));
-				ti->open_action = REOPEN;
-				ibmtr_reset_timer(&(ti->tr_timer), dev);
-				break;
-			}
-			ti->exsap_station_id = readw(ti->srb + STATION_ID_OFST);
-			ti->sap_status = OPEN;/* TR adapter is now available */
-			if (ti->open_mode==MANUAL){
-				wake_up(&ti->wait_for_reset);
-				break;
-			}
-			netif_wake_queue(dev);
-			netif_carrier_on(dev);
-			break;
-		case DIR_INTERRUPT:
-		case DIR_MOD_OPEN_PARAMS:
-		case DIR_SET_GRP_ADDR:
-		case DIR_SET_FUNC_ADDR:
-		case DLC_CLOSE_SAP:
-			if (readb(ti->srb + RETCODE_OFST))
-				DPRINTK("error on %02X: %02X\n",
-					(int) readb(ti->srb + COMMAND_OFST),
-					(int) readb(ti->srb + RETCODE_OFST));
-			break;
-		case DIR_READ_LOG:
-			if (readb(ti->srb + RETCODE_OFST)){
-				DPRINTK("error on dir_read_log: %02X\n",
-					(int) readb(ti->srb + RETCODE_OFST));
+		if (ti->srb == NULL ) {
+			DPRINTK("ti->srb == NULL.\n");
+			writeb(~SRB_RESP_INT, ti->mmio+ ACA_OFFSET+ACA_RESET+ ISRP_ODD);
+			return IRQ_NONE;
+		} else {
+			switch (readb(ti->srb)) {	/* SRB command check */
+			case XMIT_DIR_FRAME:{
+				unsigned char xmit_ret_code;
+				xmit_ret_code = readb(ti->srb + RETCODE_OFST);
+				if (xmit_ret_code == 0xff) break;
+				DPRINTK("error on xmit_dir_frame request: %02X\n",
+									xmit_ret_code);
+				if (ti->current_skb) {
+					dev_kfree_skb_irq(ti->current_skb);
+					ti->current_skb = NULL;
+				}
+				/*dev->tbusy = 0;*/
 				netif_wake_queue(dev);
+				if (ti->readlog_pending)
+					ibmtr_readlog(dev);
 				break;
 			}
+			case XMIT_UI_FRAME:{
+				unsigned char xmit_ret_code;
+
+				xmit_ret_code = readb(ti->srb + RETCODE_OFST);
+				if (xmit_ret_code == 0xff) break;
+				DPRINTK("error on xmit_ui_frame request: %02X\n",
+									xmit_ret_code);
+				if (ti->current_skb) {
+					dev_kfree_skb_irq(ti->current_skb);
+					ti->current_skb = NULL;
+				}
+				netif_wake_queue(dev);
+				if (ti->readlog_pending)
+					ibmtr_readlog(dev);
+				break;
+			}
+			case DIR_OPEN_ADAPTER:
+				dir_open_adapter(dev);
+				break;
+			case DLC_OPEN_SAP:
+				if (readb(ti->srb + RETCODE_OFST)) {
+					DPRINTK("open_sap failed: ret_code = %02X, "
+						"retrying\n",
+						(int) readb(ti->srb + RETCODE_OFST));
+					ti->open_action = REOPEN;
+					ibmtr_reset_timer(&(ti->tr_timer), dev);
+					break;
+				}
+				ti->exsap_station_id = readw(ti->srb + STATION_ID_OFST);
+				ti->sap_status = OPEN;/* TR adapter is now available */
+				if (ti->open_mode==MANUAL){
+					wake_up(&ti->wait_for_reset);
+					break;
+				}
+				netif_wake_queue(dev);
+				netif_carrier_on(dev);
+				break;
+			case DIR_INTERRUPT:
+			case DIR_MOD_OPEN_PARAMS:
+			case DIR_SET_GRP_ADDR:
+			case DIR_SET_FUNC_ADDR:
+			case DLC_CLOSE_SAP:
+				if (readb(ti->srb + RETCODE_OFST))
+					DPRINTK("error on %02X: %02X\n",
+						(int) readb(ti->srb + COMMAND_OFST),
+						(int) readb(ti->srb + RETCODE_OFST));
+				break;
+			case DIR_READ_LOG:
+				if (readb(ti->srb + RETCODE_OFST)){
+					DPRINTK("error on dir_read_log: %02X\n",
+						(int) readb(ti->srb + RETCODE_OFST));
+					netif_wake_queue(dev);
+					break;
+				}
 #if IBMTR_DEBUG_MESSAGES
 
 #define LINE_ERRORS_OFST                 0
@@ -1349,29 +1354,30 @@ static irqreturn_t tok_interrupt(int irq, void *dev_id)
 #define FREQUENCY_ERRORS_OFST            9
 #define TOKEN_ERRORS_OFST               10
 
-			DPRINTK("Line errors %02X, Internal errors %02X, "
-			"Burst errors %02X\n" "A/C errors %02X, "
-			"Abort delimiters %02X, Lost frames %02X\n"
-			"Receive congestion count %02X, "
-			"Frame copied errors %02X\nFrequency errors %02X, "
-			"Token errors %02X\n",
-			(int) readb(ti->srb + LINE_ERRORS_OFST),
-			(int) readb(ti->srb + INTERNAL_ERRORS_OFST),
-			(int) readb(ti->srb + BURST_ERRORS_OFST),
-			(int) readb(ti->srb + AC_ERRORS_OFST),
-			(int) readb(ti->srb + ABORT_DELIMITERS_OFST),
-			(int) readb(ti->srb + LOST_FRAMES_OFST),
-			(int) readb(ti->srb + RECV_CONGEST_COUNT_OFST),
-			(int) readb(ti->srb + FRAME_COPIED_ERRORS_OFST),
-			(int) readb(ti->srb + FREQUENCY_ERRORS_OFST),
-			(int) readb(ti->srb + TOKEN_ERRORS_OFST));
+				DPRINTK("Line errors %02X, Internal errors %02X, "
+				"Burst errors %02X\n" "A/C errors %02X, "
+				"Abort delimiters %02X, Lost frames %02X\n"
+				"Receive congestion count %02X, "
+				"Frame copied errors %02X\nFrequency errors %02X, "
+				"Token errors %02X\n",
+				(int) readb(ti->srb + LINE_ERRORS_OFST),
+				(int) readb(ti->srb + INTERNAL_ERRORS_OFST),
+				(int) readb(ti->srb + BURST_ERRORS_OFST),
+				(int) readb(ti->srb + AC_ERRORS_OFST),
+				(int) readb(ti->srb + ABORT_DELIMITERS_OFST),
+				(int) readb(ti->srb + LOST_FRAMES_OFST),
+				(int) readb(ti->srb + RECV_CONGEST_COUNT_OFST),
+				(int) readb(ti->srb + FRAME_COPIED_ERRORS_OFST),
+				(int) readb(ti->srb + FREQUENCY_ERRORS_OFST),
+				(int) readb(ti->srb + TOKEN_ERRORS_OFST));
 #endif
-			netif_wake_queue(dev);
-			break;
-		default:
-			DPRINTK("Unknown command %02X encountered\n",
-						(int) readb(ti->srb));
-        	}	/* end switch SRB command check */
+				netif_wake_queue(dev);
+				break;
+			default:
+				DPRINTK("Unknown command %02X encountered\n",
+							(int) readb(ti->srb));
+				}	/* end switch SRB command check */
+		}
 		writeb(~SRB_RESP_INT, ti->mmio+ ACA_OFFSET+ACA_RESET+ ISRP_ODD);
 	}	/* if SRB response */
 	if (status & ASB_FREE_INT) {	/* ASB response */
