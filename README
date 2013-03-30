@@ -1,3 +1,15 @@
+This is my attempt at returning Token Ring support to Linux.
+
+It consists of reverts of three commits:
+	1abd2296b4a1ee7b6a883541c3ede52042a09521
+	211ed865108e24697b44bee5daac502ee6bdd4a4
+	ee446fd5e6dafee4a16fd1bd345d2571dcfd6f5d
+plus updates to some driver code to make it compatible again.
+
+All Token Ring drivers compile fine, but the only one I can test is ibmtr_cs.
+It kernel panics on removal when the interface is up, but otherwise works fine.
+
+--------
         Linux kernel release 3.x <http://kernel.org/>
 
 These are the release notes for Linux version 3.  Read them carefully,
