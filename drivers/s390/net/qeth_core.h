@@ -11,6 +11,8 @@
 
 #include <linux/if.h>
 #include <linux/if_arp.h>
+#include <linux/if_tr.h>
+#include <linux/trdevice.h>
 #include <linux/etherdevice.h>
 #include <linux/if_vlan.h>
 #include <linux/ctype.h>

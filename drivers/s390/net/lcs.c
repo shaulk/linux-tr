@@ -30,6 +30,7 @@
 #include <linux/if.h>
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
+#include <linux/trdevice.h>
 #include <linux/fddidevice.h>
 #include <linux/inetdevice.h>
 #include <linux/in.h>
@@ -49,7 +50,8 @@
 #include "lcs.h"
 
 
-#if !defined(CONFIG_ETHERNET) && !defined(CONFIG_FDDI)
+#if !defined(CONFIG_ETHERNET) && \
+    !defined(CONFIG_TR) && !defined(CONFIG_FDDI)
 #error Cannot compile lcs.c without some net devices switched on.
 #endif
 
@@ -1164,7 +1166,10 @@ static void
 lcs_get_mac_for_ipm(__be32 ipm, char *mac, struct net_device *dev)
 {
 	LCS_DBF_TEXT(4,trace, "getmac");
-	ip_eth_mc_map(ipm, mac);
+	if (dev->type == ARPHRD_IEEE802_TR)
+		ip_tr_mc_map(ipm, mac);
+	else
+		ip_eth_mc_map(ipm, mac);
 }
 
 /**
@@ -1635,6 +1640,12 @@ lcs_startlan_auto(struct lcs_card *card)
 	if (rc == 0)
 		return 0;
 
+#endif
+#ifdef CONFIG_TR
+	card->lan_type = LCS_FRAME_TYPE_TR;
+	rc = lcs_send_startlan(card, LCS_INITIATOR_TCPIP);
+	if (rc == 0)
+		return 0;
 #endif
 #ifdef CONFIG_FDDI
 	card->lan_type = LCS_FRAME_TYPE_FDDI;
@@ -2161,6 +2172,12 @@ lcs_new_device(struct ccwgroup_device *ccwgdev)
 	case LCS_FRAME_TYPE_ENET:
 		card->lan_type_trans = eth_type_trans;
 		dev = alloc_etherdev(0);
+		break;
+#endif
+#ifdef CONFIG_TR
+	case LCS_FRAME_TYPE_TR:
+		card->lan_type_trans = tr_type_trans;
+		dev = alloc_trdev(0);
 		break;
 #endif
 #ifdef CONFIG_FDDI
