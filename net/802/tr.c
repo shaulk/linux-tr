@@ -658,7 +658,7 @@ static int __init rif_init(void)
 #ifdef CONFIG_SYSCTL
 	register_net_sysctl(&init_net, "net/token-ring", tr_table);
 #endif
-	proc_net_fops_create(&init_net, "tr_rif", S_IRUGO, &rif_seq_fops);
+	proc_create("tr_rif", S_IRUGO, init_net.proc_net, &rif_seq_fops);
 	return 0;
 }
 

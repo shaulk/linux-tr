@@ -234,7 +234,7 @@ static const struct net_device_ops streamer_netdev_ops = {
 	.ndo_set_mac_address	= streamer_set_mac_address,
 };
 
-static int __devinit streamer_init_one(struct pci_dev *pdev,
+static int streamer_init_one(struct pci_dev *pdev,
 				       const struct pci_device_id *ent)
 {
 	struct net_device *dev;
@@ -390,7 +390,7 @@ err_out:
 	return rc;
 }
 
-static void __devexit streamer_remove_one(struct pci_dev *pdev)
+static void streamer_remove_one(struct pci_dev *pdev)
 {
 	struct net_device *dev=pci_get_drvdata(pdev);
 	struct streamer_private *streamer_priv;
@@ -1901,7 +1901,7 @@ static struct pci_driver streamer_pci_driver = {
   .name     = "lanstreamer",
   .id_table = streamer_pci_tbl,
   .probe    = streamer_init_one,
-  .remove   = __devexit_p(streamer_remove_one),
+  .remove   = streamer_remove_one,
 };
 
 module_pci_driver(streamer_pci_driver);

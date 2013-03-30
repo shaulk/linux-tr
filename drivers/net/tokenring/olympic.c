@@ -204,7 +204,7 @@ static const struct net_device_ops olympic_netdev_ops = {
 	.ndo_set_mac_address	= olympic_set_mac_address,
 };
 
-static int __devinit olympic_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
+static int olympic_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 {
 	struct net_device *dev ; 
 	struct olympic_private *olympic_priv;
@@ -1706,7 +1706,7 @@ static const struct file_operations olympic_proc_ops = {
 	.release	= single_release,
 };
 
-static void __devexit olympic_remove_one(struct pci_dev *pdev) 
+static void olympic_remove_one(struct pci_dev *pdev) 
 {
 	struct net_device *dev = pci_get_drvdata(pdev) ; 
 	struct olympic_private *olympic_priv=netdev_priv(dev);
@@ -1729,7 +1729,7 @@ static struct pci_driver olympic_driver = {
 	.name		= "olympic",
 	.id_table	= olympic_pci_tbl,
 	.probe		= olympic_probe,
-	.remove		= __devexit_p(olympic_remove_one),
+	.remove		= olympic_remove_one,
 };
 
 module_pci_driver(olympic_driver);
